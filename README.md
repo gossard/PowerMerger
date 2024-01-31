@@ -1,1 +1,1 @@
-# PowerShell-Module-Skeleton
+# PowerMerger
