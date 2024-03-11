@@ -4,7 +4,7 @@ function Get-SortedPs1Files([string]$FolderPath) {
 
 [string]$Encoding = "utf8"
 
-[string]$ModuleName = "MyModule"
+[string]$ModuleName = "PowerMerger"
 [string]$ModulePath   = Join-Path $PSScriptRoot -ChildPath "$($ModuleName).psm1"
 [string]$ManifestPath = Join-Path $PSScriptRoot -ChildPath "$($ModuleName).psd1"
 
