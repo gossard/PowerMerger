@@ -1,16 +1,22 @@
-# PowerMerger - A PowerShell Data and Template Merging Engine
+# PowerMerger
 
-**PowerMerger** is a PowerShell tool for generating text files from templates and PowerShell objects. It's designed to automate the creation of reports, configuration files, HTML, and more.
+A PowerShell tool for generating text files from templates and PowerShell objects. It's designed to automate the creation of reports, configuration files, HTML, and more.
+
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Quick Start: Generate a single document](#quick-start-generate-a-single-document)
+- [Core Concepts: How Templating Works](#core-concepts-how-templating-works)
+- [Usage Examples](#usage-examples)
+- [API at a Glance](#api-at-a-glance)
+- [Extensibility](#extensibility)
 
 ## Key Features
 
 - **Simple Templating:** Use plain text templates with placeholders like `%FieldName%`.
 - **Dynamic Sections:** Define blocks in your template that repeat for each object in a collection.
-- **Static Placeholders:** Set placeholders that are the same for the entire document (e.g., a report date).
-- **Extensible Output Processors:** You decide where the output goes.
-  - `OutStringProcessor`: Returns the content as string(s).
-  - `OutFileProcessor`: Saves the content to one or more files.
-  - You can create your own processors to write to a database, call a REST API, etc. (not yet documented)
+- **Static Placeholders:** Set placeholders that are the same for the entire document.
+- **Extensible Output Processors:** Control where the output goes (string, files, or your own custom logic).
+- **Customizable Markers:** Change the default placeholder wrapper (`%`) and dynamic section name to fit your needs.
 - **Progress Bar:** An optional progress bar shows the status when processing large datasets.
 
 ## Installation
@@ -20,171 +26,145 @@ Clone this repository and import the module directly:
 Import-Module -Name .\Path\To\PowerMerger.psm1
 ```
 
-## Quick Start
+## Quick Start: Generate a single document
 
-Let's generate a Markdown user list.
+This example generates one Markdown report from a list of users.
 
-**1. Create a template file (template.md):**
-
-The template contains static placeholders (``%ReportDate%``) and a dynamic section. The content between the two ``%Dynamic%`` markers will be repeated for each data object.
+**Template (`template.md`):**
 
 ```markdown
 # User Report - %ReportDate%
-
-This report was generated for **%CompanyName%**.
 
 ---
 %Dynamic%
 ## %Name%
 - **ID:** %Id%
-- **Email:** %Email%
 %Dynamic%
 ---
-
-End of report.
 ```
 
-**2. Write your PowerShell script:**
+**PowerShell script:**
 
 ```powershell
-# 1. Your data objects
 $users = @(
-    [pscustomobject]@{ Id = 101; Name = 'Alice'; Email = 'alice@example.com' }
-    [pscustomobject]@{ Id = 102; Name = 'Bob';   Email = 'bob@example.com' }
-    [pscustomobject]@{ Id = 103; Name = 'Charlie'; Email = 'charlie@example.com' }
+    [pscustomobject]@{ Id = 101; Name = 'Alice' }
+    [pscustomobject]@{ Id = 102; Name = 'Bob' }
 )
 
-# 2. Your static data
-$staticFields = @{
-    ReportDate  = (Get-Date).ToString('yyyy-MM-dd')
-    CompanyName = 'My Awesome Corp'
-}
+$request = New-MergerRequest -TemplatePath ".\template.md" `
+    -StaticFields @{ ReportDate = (Get-Date).ToString('yyyy-MM-dd') } `
+    -Object $users
 
-# 3. Create a merge request
-$request = New-MergerRequest -TemplatePath ".\template.md" -StaticFields $staticFields -Object $users
-
-# 4. Choose an output processor (get the result as a string)
 $processor = New-MergerOutStringProcessor
-
-# 5. Run the build process using the pipeline
 $result = $request | New-MergerBuild -Processor $processor
-
-# 6. Display the result
 $result | Write-Host
 ```
-
 **Expected Output:**
 
 ```markdown
 # User Report - 2024-11-03
 
-This report was generated for **My Awesome Corp**.
-
 ---
 ## Alice
 - **ID:** 101
-- **Email:** alice@example.com
 ## Bob
 - **ID:** 102
-- **Email:** bob@example.com
-## Charlie
-- **ID:** 103
-- **Email:** charlie@example.com
 ---
-
-End of report.
 ```
 
-## Core Concepts
+## Core Concepts: How Templating Works
 
-- `New-MergerRequest`: Creates a request object that holds all the input: the template, the data objects (`-Object`), static fields, and other settings.
-- `New-Merger...Processor`: Creates a processor object that defines the output destination.
-  - `New-MergerOutStringProcessor`: For in-memory string output.
-  - `New-MergerOutFileProcessor`: For saving to file(s).
-- `New-MergerBuild`: The engine that takes a `MergerRequest` and a `MergerProcessor` and performs the merge.
+PowerMerger processes templates by reading them line by line. This imposes one important rule:
 
-## More Examples
+**Rule:** The dynamic section marker (e.g., `%Dynamic%`) **must be on its own line**.
 
-### Generating One File Per Object
+**Correct:**
+```
+A static field like %MyCompany%
+%Dynamic%
+A field to be repeated for each object, like %UserName%.
+%Dynamic%
+```
+**Incorrect:**
+```
+A static field like %MyCompany%
+%Dynamic% A field to be repeated for each object, like %UserName%. %Dynamic%
+```
 
-This is useful for creating individual profile pages, reports, or configuration files.
+## Usage Examples
 
-**1. Create the template file (user-profile.html):**
+### Example 1: Generating One File Per Object
 
-Notice how the entire HTML structure is enclosed between the two `%Dynamic%` lines. Static placeholders like `%GenerationDate%` will still work correctly inside this block.
+This example demonstrates how to create a separate file for each object and also uses a static field that will be the same across all generated files.
+
+**Note:** The destination directory passed to the `-DestDir` parameter must exist.
+
+**Template (`user-profile.html`):**
+
+Notice how the entire HTML structure is enclosed between the two `%Dynamic%` lines. Static placeholders like `%SystemName%` will still work correctly inside this block.
 
 ```html
 %Dynamic%
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>User Profile: %Name%</title>
-    <style>
-        body { font-family: sans-serif; color: #333; }
-        .profile-card { border: 1px solid #ccc; padding: 1em; margin: 1em; border-radius: 8px; max-width: 400px; }
-        footer { font-size: 0.8em; color: #777; margin-top: 2em; }
-    </style>
-</head>
+<html>
+<head><title>User Profile: %Name%</title></head>
 <body>
-
-    <div class="profile-card">
-        <h1>%Name%</h1>
-        <ul>
-            <li><strong>User ID:</strong> %UserID%</li>
-            <li><strong>Contact:</strong> %Email%</li>
-        </ul>
-    </div>
-
-    <footer>
-        Page generated on %GenerationDate%.
-    </footer>
-
+    <h1>%Name%</h1>
+    <p>User ID: %UserID%</p>
+    <footer>Generated by %SystemName%</footer>
 </body>
 </html>
 %Dynamic%
 ```
 
-**2. Write the PowerShell script:**
-
-The script will process each user object, populate the template, and create a unique HTML file for each one.
-
-**Note:** The destination directory passed to the `-DestDir` parameter must exist. The `New-MergerOutFileProcessor` function will stop with an error if the directory is not found.
+**Powershell script:**
 
 ```powershell
-# Data for the user profiles
 $users = @(
-    [pscustomobject]@{ UserID = 'u-001'; Name = 'Alice'; Email = 'alice@example.com'; HtmlFileName = 'alice-profile' }
-    [pscustomobject]@{ UserID = 'u-002'; Name = 'Bob';   Email = 'bob@example.com';   HtmlFileName = 'bob-profile' }
-    [pscustomobject]@{ UserID = 'u-003'; Name = 'Charlie'; Email = 'charlie@example.com'; HtmlFileName = 'charlie-profile' }
+    [pscustomobject]@{ UserID = 'u-001'; Name = 'Alice'; HtmlFileName = 'alice-profile' },
+    [pscustomobject]@{ UserID = 'u-002'; Name = 'Bob';   HtmlFileName = 'bob-profile' }
 )
 
-# Static data for the footer
-$staticData = @{
-    GenerationDate = (Get-Date).ToString('yyyy-MM-dd')
-}
-
-# 1. Create the request
 $request = New-MergerRequest -TemplatePath ".\user-profile.html" `
-    -StaticFields $staticData `
+    -StaticFields @{ SystemName = 'PowerMerger Reporting Engine' } `
     -Object $users
 
-# 2. Configure the file processor for separate files
-#    -PropertyName points to the property on our objects that holds the file name.
-$processor = New-MergerOutFileProcessor -PropertyName 'HtmlFileName' -DestDir ".\output_profiles" -Extension ".html"
+$processor = New-MergerOutFileProcessor -PropertyName 'HtmlFileName' -DestDir ".\output" -Extension ".html"
 
-# 3. Run the build process
 $request | New-MergerBuild -Processor $processor
-
-Write-Host "Profile pages generated in '.\output_profiles'"
 ```
 
-**Result:**
+This generates `alice-profile.html` and `bob-profile.html` in the `.\output` directory. Each file will contain the user-specific information and the same static footer text.
 
-Assuming the `output_profiles` directory exists, the script will generate three files inside it:
-- `alice-profile.html`
-- `bob-profile.html`
-- `charlie-profile.html`
+### Example 2: Advanced Customization
 
-Each file will be a complete HTML page with the specific user's information and the static generation date in the footer.
+Use `-FieldWrapper` and `-DynamicContentField` to change the default markers if they conflict with your template's syntax. The wrapper is symmetrical.
 
+**Template (`template.bat`):**
+
+```batch
+@echo off
+REM This script uses a custom marker __VAR__ instead of %%VAR%%
+echo User: __UserName__
+```
+**PowerShell script:**
+
+```powershell
+$request = New-MergerRequest -TemplatePath ".\template.bat" `
+    -FieldWrapper "__" `
+    -StaticFields @{ UserName = 'Admin' }
+
+$processor = New-MergerOutStringProcessor
+$result = $request | New-MergerBuild -Processor $processor
+Write-Host $result
+```
+
+## API at a Glance
+
+- `New-MergerRequest`: Creates the job request, defining the template, data, and settings.
+- `New-Merger...Processor`: Creates a processor that defines the output destination (e.g., `New-MergerOutFileProcessor`).
+- `New-MergerBuild`: The engine that executes the job.
+
+## Extensibility
+
+**PowerMerger** is designed to be extensible. You can create your own processor classes by inheriting from `MergerProcessor` to send output to different targets, like a database, a REST API, or a Zip archive.
