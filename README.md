@@ -149,6 +149,8 @@ Notice how the entire HTML structure is enclosed between the two `%Dynamic%` lin
 
 The script will process each user object, populate the template, and create a unique HTML file for each one.
 
+**Note:** The destination directory passed to the `-DestDir` parameter must exist. The `New-MergerOutFileProcessor` function will stop with an error if the directory is not found.
+
 ```powershell
 # Data for the user profiles
 $users = @(
@@ -179,9 +181,10 @@ Write-Host "Profile pages generated in '.\output_profiles'"
 
 **Result:**
 
-This will create a folder named `output_profiles` containing three files:
+Assuming the `output_profiles` directory exists, the script will generate three files inside it:
 - `alice-profile.html`
 - `bob-profile.html`
 - `charlie-profile.html`
 
 Each file will be a complete HTML page with the specific user's information and the static generation date in the footer.
+
