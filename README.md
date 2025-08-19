@@ -360,21 +360,21 @@ This section applies to the built-in processors:
 
 Explicit encoding support for the built-in OutFile processor will be added in a future release.
 
-Workarounds:
-- Set a session-level default for Out-File:
-  ```powershell
-  # Session-level default for Out-File (with restore afterwards)
-  $prevEncoding = $PSDefaultParameterValues['Out-File:Encoding']
-  $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'   # or 'utf8BOM', 'ascii', etc.
+Workaround, set a session-level default for Out-File:
 
-  # ... run PowerMerger build(s) here ...
+```powershell
+# Session-level default for Out-File (with restore afterwards)
+$prevEncoding = $PSDefaultParameterValues['Out-File:Encoding']
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'   # or 'utf8BOM', 'ascii', etc.
 
-  if ($null -ne $prevEncoding) {
-      $PSDefaultParameterValues['Out-File:Encoding'] = $prevEncoding
-  } else {
-      $PSDefaultParameterValues.Remove('Out-File:Encoding') | Out-Null
-  }
-  ```
+# ... run PowerMerger build(s) here ...
+
+if ($null -ne $prevEncoding) {
+  $PSDefaultParameterValues['Out-File:Encoding'] = $prevEncoding
+} else {
+  $PSDefaultParameterValues.Remove('Out-File:Encoding') | Out-Null
+}
+```
   
 ## API Reference
 
