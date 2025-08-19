@@ -360,7 +360,7 @@ This section applies to the built-in processors:
 
 Explicit encoding support for the built-in OutFile processor will be added in a future release.
 
-Workaround, set a session-level default for Out-File:
+Workaround: set a session-level default for Out-File:
 
 ```powershell
 # Session-level default for Out-File (with restore afterwards)
@@ -398,6 +398,19 @@ Processors determine what to do with the generated output. You create one and pa
   - **Combined mode:** Use `-FileName <string>` to save all output to a single file.
   - **Separated mode:** Use `-PropertyName <string>` to specify which property on your objects contains the name for each individual file.
   - **Encoding:** Uses PowerShell’s default `Out-File` encoding (see [Encoding](#encoding)).
+
+  Behavior:
+  - Applies to both modes:
+    - The destination directory (`-DestDir`) must exist (validated).
+    - File names are used as-is; no sanitization. Invalid characters will cause an error.
+    - Extension resolution: uses `-Extension` if provided; otherwise:
+      - Combined: inferred from `-FileName` (if present), otherwise from `-TemplatePath`.
+      - Separated: inferred from `-TemplatePath`.
+    - Existing files are overwritten (`Out-File -Force`).
+  - Combined mode:
+    - The file name comes from `-FileName`.
+  - Separated mode:
+    - The file name comes from the object property given by `-PropertyName`; if empty/null, a fallback like `noname(index-XX)` is used.
 - **`New-MergerEmptyProcessor`**: Runs the entire build process but discards all output. This is useful for testing or for scenarios where you only need side effects (like the progress bar).
 
 ### `New-MergerBuild`
@@ -543,15 +556,10 @@ If your processor needs to return data, add it to the `$this.Output` list proper
 - Properties and formatting:
   - Nested properties (e.g., `Customer.Name`) and indexers (`Items[0]`) are not supported natively.
   - Arrays/collections are rendered via `.ToString()` (often “System.Object[]”). Pre-format them (e.g., `-join ', '`) before merging.
-- Files in “Separated” mode:
-  - The file name is taken as-is from the chosen property (no sanitization). Invalid characters will cause an error.
-  - The destination directory (`-DestDir`) must exist.
-  - If the name is empty, a fallback like noname(index-XX) is used.
-  - If no extension is provided (via `-Extension` or inferred), files may be created without an extension.
 - Memory/performance:
   - In Combined mode, the entire output is aggregated in memory before emission. For very large data sets, prefer Separated mode.
 - Misc:
-  - Unreplaced placeholders (e.g., missing static values) remain as-is in the output.
+  - Unreplaced placeholders remain as-is in the output.
   - No conditional logic or loops beyond repeating dynamic sections.
   - The progress bar relies on `Write-Progress` and may not display in non-interactive hosts.
 
