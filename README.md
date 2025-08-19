@@ -434,6 +434,8 @@ Let's start with a minimal but useful example. This processor logs key events to
 **1. Save this class definition in a file named `MyProcessors.ps1`:**
 
 ```powershell
+using module PowerMerger
+
 class SimpleLogProcessor : MergerProcessor {
 
     # We want to process each object individually.
