@@ -4,13 +4,16 @@ PowerMerger is a PowerShell tool for generating text from templates and data. It
 
 - [Key Features](#key-features)
 - [Common Use Cases](#common-use-cases)
+- [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Quick Start: Generate a single document](#quick-start-generate-a-single-document)
 - [Core Concepts: How Templating Works](#core-concepts-how-templating-works)
 - [Working with Real-World Data](#working-with-real-world-data)
 - [Advanced Features](#advanced-features)
+- [Encoding](#encoding)
 - [API Reference](#api-reference)
 - [Extensibility](#extensibility)
+- [Known Limitations](#known-limitations)
 - [License](#license)
   
 ## Key Features
@@ -24,7 +27,7 @@ PowerMerger is a PowerShell tool for generating text from templates and data. It
 
 ## Common Use Cases
 
-PowerMerger is a versatile tool that can be used in a wide range of automation scenarios. Here are just a few ideas
+PowerMerger is a versatile tool that can be used in a wide range of automation scenarios. Here are just a few ideas:
 
 - **IT Reporting:**
   - Generate daily HTML reports on the status of Active Directory users or computers.
@@ -42,6 +45,12 @@ PowerMerger is a versatile tool that can be used in a wide range of automation s
 - **Development & DevOps:**
   - Scaffold new code modules or classes from templates.
   - Generate deployment scripts tailored to different environments (Dev, Test, Prod).
+
+## Prerequisites
+- PowerShell:
+  - Windows PowerShell 5.1 (WMF 5.1) or PowerShell 7+ (recommended, cross‑platform).
+  - Uses PowerShell classes (available since 5.1).
+- Supported OS: Windows, Linux, macOS.
 
 ## Installation
 
@@ -78,8 +87,9 @@ $request = New-MergerRequest -TemplatePath ".\template.txt" `
     -Object $users
 
 $processor = New-MergerOutStringProcessor
+
 $result = $request | New-MergerBuild -Processor $processor
-$result | Write-Host
+$result | Write-Output
 ```
 
 **3. Check the expected output:**
@@ -123,6 +133,9 @@ Let's create a simple HTML contact list for all users in a specific department a
 To save the merged output as a single file, we use the `New-MergerOutFileProcessor` in its **Combined** mode by providing the `-FileName` parameter.
 
 ```powershell
+# Requires RSAT / Active Directory module
+Import-Module ActiveDirectory
+
 # We directly use the output of Get-ADUser as our data source.
 $users = Get-ADUser -Filter 'Department -eq "Sales"' -Properties GivenName, Surname, EmailAddress
 
@@ -131,6 +144,7 @@ $request = New-MergerRequest -TemplatePath ".\ad-report.html" `
     -Object $users
 
 $processor = New-MergerOutFileProcessor -FileName "Sales_Department_Report.html" -DestDir "."
+
 $request | New-MergerBuild -Processor $processor
 
 Write-Host "Report generated successfully at .\Sales_Department_Report.html"
@@ -167,20 +181,22 @@ u-002,Bob
 
 **3. The PowerShell Script:**
 
-**Note:** The destination directory passed to the `-DestDir` parameter must exist.
-
 ```powershell
 # We use Import-Csv to get our data objects.
 $users = Import-Csv -Path ".\users.csv"
 
 # Create the request, adding a static field.
-$request = New-MergerRequest -TemplatePath ".\user-profile.html" `
+$request = New-MergerRequest -TemplatePath ".\user-profiles.html" `
     -StaticFields @{ SystemName = 'PowerMerger Automation' } `
     -Object $users
+
+# Ensure that the destination directory exists.
+New-Item -ItemType Directory -Force -Path '.\output' | Out-Null
 
 # Use the OutFileProcessor in "Separated" mode.
 # We tell it to use the 'Name' property from each object as the base for the filename.
 $processor = New-MergerOutFileProcessor -PropertyName 'Name' -DestDir ".\output" -Extension ".html"
+
 $request | New-MergerBuild -Processor $processor
 ```
 
@@ -238,6 +254,7 @@ A static field like %MyCompany%
 Hello %UserName%
 %Dynamic%
 ```
+
 **Incorrect:**
 ```
 A static field like %MyCompany%
@@ -278,6 +295,7 @@ $request = New-MergerRequest -TemplatePath ".\template.sql" `
     -Object $items
 
 $processor = New-MergerOutStringProcessor
+
 $result = $request | New-MergerBuild -Processor $processor
 Write-Host $result
 ```
@@ -325,28 +343,62 @@ Status: 100/200
 
 *(The visual appearance may vary based on your PowerShell version and host.)*
 
+## Encoding
+
+This section applies to the built-in processors:
+
+- `New-MergerOutFileProcessor` writes files using PowerShell’s `Out-File` and therefore inherits PowerShell’s default encoding:
+  
+  | PowerShell version       | Default encoding        |
+  |--------------------------|-------------------------|
+  | Windows PowerShell 5.1   | UTF-16 LE with BOM      |
+  | PowerShell 7+            | UTF-8 (no BOM)          |
+
+- `New-MergerOutStringProcessor` returns strings (no encoding is applied until you save them yourself).
+- `New-MergerEmptyProcessor` does not write any output.
+- Custom processors can choose their own encoding; consider exposing an -Encoding parameter.
+
+Explicit encoding support for the built-in OutFile processor will be added in a future release.
+
+Workarounds:
+- Set a session-level default for Out-File:
+  ```powershell
+  # Session-level default for Out-File (with restore afterwards)
+  $prevEncoding = $PSDefaultParameterValues['Out-File:Encoding']
+  $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'   # or 'utf8BOM', 'ascii', etc.
+
+  # ... run PowerMerger build(s) here ...
+
+  if ($null -ne $prevEncoding) {
+      $PSDefaultParameterValues['Out-File:Encoding'] = $prevEncoding
+  } else {
+      $PSDefaultParameterValues.Remove('Out-File:Encoding') | Out-Null
+  }
+  ```
+  
 ## API Reference
 
 ### `New-MergerRequest`
 Creates the main request object. This is typically the first command you'll run.
 
 **Key Parameters:**
--   `-TemplatePath <string>`: Path to the template file.
--   `-TemplateContent <string>`: The template content as a string, instead of from a file.
--   `-StaticFields <hashtable>`: A hashtable of placeholders that are the same for the entire document.
--   `-Object <object[]>`: The collection of objects to be used in the dynamic sections. This can be piped.
--   `-FieldWrapper <string>`: (Optional) The character(s) used to enclose placeholders. Default is `%`.
--   `-DynamicContentField <string>`: (Optional) The name for the dynamic section marker. Default is `Dynamic`.
--   `-ProgressGranularity <int>`: (Optional) Enables and sets the update frequency (in percent) for the progress bar.
+- `-TemplatePath <string>`: Path to the template file.
+- `-TemplateContent <string>`: The template content as a string, instead of from a file.
+- `-StaticFields <hashtable>`: A hashtable of placeholders that are the same for the entire document.
+- `-Object <object[]>`: The collection of objects to be used in the dynamic sections. This can be piped.
+- `-FieldWrapper <string>`: (Optional) The character(s) used to enclose placeholders. Default is `%`.
+- `-DynamicContentField <string>`: (Optional) The name for the dynamic section marker. Default is `Dynamic`.
+- `-ProgressGranularity <int>`: (Optional) Enables and sets the update frequency (in percent) for the progress bar.
 
 ### Processors: `New-Merger...Processor`
 Processors determine what to do with the generated output. You create one and pass it to `New-MergerBuild`.
 
--   **`New-MergerOutStringProcessor`**: Returns the generated content as one or more strings. This is useful for further processing in PowerShell.
--   **`New-MergerOutFileProcessor`**: Saves the generated content to files.
-    -   **Combined mode:** Use `-FileName <string>` to save all output to a single file.
-    -   **Separated mode:** Use `-PropertyName <string>` to specify which property on your objects contains the name for each individual file.
--   **`New-MergerEmptyProcessor`**: Runs the entire build process but discards all output. This is useful for testing or for scenarios where you only need side effects (like the progress bar).
+- **`New-MergerOutStringProcessor`**: Returns the generated content as one or more strings. This is useful for further processing in PowerShell.
+- **`New-MergerOutFileProcessor`**: Saves the generated content to files.
+  - **Combined mode:** Use `-FileName <string>` to save all output to a single file.
+  - **Separated mode:** Use `-PropertyName <string>` to specify which property on your objects contains the name for each individual file.
+  - **Encoding:** Uses PowerShell’s default `Out-File` encoding (see [Encoding](#encoding)).
+- **`New-MergerEmptyProcessor`**: Runs the entire build process but discards all output. This is useful for testing or for scenarios where you only need side effects (like the progress bar).
 
 ### `New-MergerBuild`
 The engine that executes the merge operation. It takes a `MergerRequest` and a `MergerProcessor`. It's designed to be used at the end of a pipeline.
@@ -355,6 +407,7 @@ The engine that executes the merge operation. It takes a `MergerRequest` and a `
 ```powershell
 $request | New-MergerBuild -Processor $processor
 ```
+
 ## Extensibility
 
 PowerMerger is designed to be extensible. You can create your own custom processors without modifying the module's source code, allowing you to send output to any target, like a database, a REST API, or a custom log file.
@@ -378,14 +431,14 @@ class SimpleLogProcessor : MergerProcessor {
     # This is where the logic goes. We use a switch to react to events we care about.
     [void]BuildStateChanged([BuildEvent]$BuildEvent) {
         switch ($BuildEvent.EventType) {
-            'BuildBegin' {
+            ([BuildEventType]::BuildBegin) {
                 Write-Host "Build is starting..." -ForegroundColor Cyan
             }
-            'ContentGenerated' {
+            ([BuildEventType]::ContentGenerated) {
                 $snippet = $BuildEvent.Content.Trim()
                 Write-Host "  -> Content generated for object $($BuildEvent.Object.Name): '$snippet'"
             }
-            'BuildEnd' {
+            ([BuildEventType]::BuildEnd) {
                 Write-Host "Build has finished. $($BuildEvent.ObjectCount) objects processed." -ForegroundColor Cyan
             }
         }
@@ -393,6 +446,7 @@ class SimpleLogProcessor : MergerProcessor {
 
 }
 ```
+
 **2. Use it in your main script:**
 
 ```powershell
@@ -415,6 +469,7 @@ $request = New-MergerRequest -TemplateContent $templateContent -Object $users
 $logProcessor = [SimpleLogProcessor]::new()
 $request | New-MergerBuild -Processor $logProcessor
 ```
+
 **Expected output:**
 
 ```
@@ -430,7 +485,7 @@ As you can see, creating a custom processor is straightforward. You only need to
 
 For more advanced scenarios, you need to understand the full contract for a `MergerProcessor`.
 
-### 1. Class Structure
+#### 1. Class Structure
 
 Your class must inherit from `MergerProcessor` and implement two methods:
 
@@ -441,20 +496,20 @@ class MyCustomProcessor : MergerProcessor {
 }
 ```
 
-### 2. `GetRequiredBuildType()` Method
+#### 2. `GetRequiredBuildType()` Method
 
 This method controls how the content is generated and sent to your processor.
 
 - **`[BuildType]::Separated`**: Your processor will receive a `ContentGenerated` event **for each object** in the data collection. This is ideal for generating separate files or performing an action for each item.
 - **`[BuildType]::Combined`**: Your processor will receive a **single** `ContentGenerated` event at the very end, containing the fully merged content for all objects. This is ideal for generating a single report or file.
 
-### 3. BuildStateChanged(`[BuildEvent]$BuildEvent`) Method
+#### 3. BuildStateChanged(`[BuildEvent]$BuildEvent`) Method
 
 This is the heart of your processor. It's an event handler that is called multiple times during the build lifecycle. You can inspect the `$BuildEvent.EventType` property to decide what to do.
 
 The `$BuildEvent` object contains all the context about the current state of the build. Here are the different event types and the data available for each:
 
-| EventType          | Key Data Available in `$BuildEvent` | description |
+| EventType          | Key Data Available in `$BuildEvent` | Description |
 | ------------------ | ----------------------------------- | ----------- |
 | `BuildBegin`       | `.Request`                          | Fired once at the very beginning. Useful for initialization tasks (e.g., opening a file or connection).
 | `MergingObject`    | `.Object`, `.ObjectCount`           | Fired for each object before its content is merged. Useful for logging or progress updates.
@@ -470,9 +525,35 @@ If your processor needs to return data, add it to the `$this.Output` list proper
         if($BuildEvent.EventType -eq [BuildEventType]::ContentGenerated) {
             $this.Output.Add($BuildEvent.Content)
         }
-    }
 }
 ```
+
+## Known Limitations
+
+- Dynamic sections:
+  - The dynamic marker (e.g., `%Dynamic%`) must be on its own line and appear in pairs (open/close).
+  - Nested dynamic sections are not supported.
+- Replacement scope:
+  - Object placeholders (from your data objects) are only replaced inside dynamic sections.
+  - Static placeholders (provided via -StaticFields) are replaced everywhere.
+  - Missing or null properties render as an empty string inside dynamic sections.
+- Placeholders:
+  - Field wrappers are symmetric (e.g., %...%, @@...@@). With the current implementation, avoid wrappers that contain regex metacharacters (., +, *, |, etc.).
+  - There is no built-in escaping to render a placeholder literally (e.g., to output "%Name%" verbatim).
+- Properties and formatting:
+  - Nested properties (e.g., `Customer.Name`) and indexers (`Items[0]`) are not supported natively.
+  - Arrays/collections are rendered via `.ToString()` (often “System.Object[]”). Pre-format them (e.g., `-join ', '`) before merging.
+- Files in “Separated” mode:
+  - The file name is taken as-is from the chosen property (no sanitization). Invalid characters will cause an error.
+  - The destination directory (`-DestDir`) must exist.
+  - If the name is empty, a fallback like noname(index-XX) is used.
+  - If no extension is provided (via `-Extension` or inferred), files may be created without an extension.
+- Memory/performance:
+  - In Combined mode, the entire output is aggregated in memory before emission. For very large data sets, prefer Separated mode.
+- Misc:
+  - Unreplaced placeholders (e.g., missing static values) remain as-is in the output.
+  - No conditional logic or loops beyond repeating dynamic sections.
+  - The progress bar relies on `Write-Progress` and may not display in non-interactive hosts.
 
 ## License
 
