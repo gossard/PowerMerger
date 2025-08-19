@@ -297,7 +297,7 @@ $request = New-MergerRequest -TemplatePath ".\template.sql" `
 $processor = New-MergerOutStringProcessor
 
 $result = $request | New-MergerBuild -Processor $processor
-Write-Host $result
+$result | Write-Output
 ```
 
 ### Using the Progress Bar
