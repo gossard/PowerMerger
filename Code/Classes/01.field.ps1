@@ -24,3 +24,22 @@ class FieldFormat {
     }
 
 }
+
+class FieldResolver {
+
+    [FieldFormat]$FieldFormat
+
+    FieldResolver([FieldFormat]$FieldFormat) {
+        $this.FieldFormat = $FieldFormat
+    }
+
+    [object]Resolve([object]$Object, [string]$Field) {
+        if($null -eq $Object) {
+            return $null
+        }
+        [string]$PropertyPath = $this.FieldFormat.Unformat($Field)
+
+        return [PowerMergerUtils]::GetNestedPropertyValue($Object, $PropertyPath)
+    }
+
+}

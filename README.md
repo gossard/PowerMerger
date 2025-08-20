@@ -583,7 +583,7 @@ If your processor needs to return data, add it to the `$this.Output` list proper
   - Field wrappers are symmetric (e.g., %...%, @@...@@). With the current implementation, avoid wrappers that contain regex metacharacters (., +, *, |, etc.).
   - There is no built-in escaping to render a placeholder literally (e.g., to output "%Name%" verbatim).
 - Properties and formatting:
-  - Nested properties (e.g., `Customer.Name`) and indexers (`Items[0]`) are not supported natively.
+  - Accessing arrays/collection items by index (e.g., `Items[0]`) are not supported
   - Arrays/collections are rendered via `.ToString()` (often “System.Object[]”). Pre-format them (e.g., `-join ', '`) before merging.
 - Memory/performance:
   - In Combined mode, the entire output is aggregated in memory before emission. For very large data sets, prefer Separated mode.

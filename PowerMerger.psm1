@@ -1,4 +1,25 @@
-﻿# Built on 03/11/2024 10:04:59
+﻿# Built on 08/20/2025 16:13:17
+class PowerMergerUtils {
+
+    hidden PowerMergerUtils() {}
+
+    static [object]GetNestedPropertyValue([object]$BaseObject, [string]$PropertyPath) {
+        if($null -eq $BaseObject -or [string]::IsNullOrWhiteSpace($PropertyPath)) {
+            return $null
+        }
+        [string[]]$Properties = $PropertyPath.Split('.')
+        [object]$CurrentObject = $BaseObject
+        foreach($Property in $Properties) {
+            $PropertyInfo = $CurrentObject.psobject.Properties[$Property]
+            if($null -eq $PropertyInfo) {
+                return $null
+            }
+            $CurrentObject = $PropertyInfo.Value
+        }
+        return $CurrentObject
+    }
+
+}
 class FieldFormat {
 
     [string]$FieldWrapper
@@ -22,6 +43,25 @@ class FieldFormat {
 
     [string]Unformat([string]$Field) {
         return $Field.Replace($this.FieldWrapper, [string]::Empty)
+    }
+
+}
+
+class FieldResolver {
+
+    [FieldFormat]$FieldFormat
+
+    FieldResolver([FieldFormat]$FieldFormat) {
+        $this.FieldFormat = $FieldFormat
+    }
+
+    [object]Resolve([object]$Object, [string]$Field) {
+        if($null -eq $Object) {
+            return $null
+        }
+        [string]$PropertyPath = $this.FieldFormat.Unformat($Field)
+
+        return [PowerMergerUtils]::GetNestedPropertyValue($Object, $PropertyPath)
     }
 
 }
@@ -208,7 +248,7 @@ class OutFileProcessor : MergerProcessor {
         if($this.IsCombined()) {
             $FileName = $this.FileOrProperty
         } else {
-            $FileName = $BuildEvent.Object.$($this.FileOrProperty)
+            $FileName = [PowerMergerUtils]::GetNestedPropertyValue($BuildEvent.Object, $this.FileOrProperty)
             if([string]::IsNullOrWhiteSpace($FileName)) {
                 $FileName = $this.GenerateFileName($BuildEvent)
             }
@@ -352,6 +392,7 @@ class MergerBuilder {
     [MergerProcessor]$Processor
     [System.Collections.Generic.List[BuildListener]]$Listeners
     [BuildEvent]$BuildEvent
+    [FieldResolver]$FieldResolver
 
     [System.Collections.Generic.List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
         $this.MasterContent = New-Object MasterContent
@@ -364,6 +405,7 @@ class MergerBuilder {
             $this.Listeners.Add((New-Object BuildProgress))
         }
         $this.BuildEvent = New-Object BuildEvent
+        $this.FieldResolver = New-Object FieldResolver -ArgumentList $Request.FieldFormat
 
         $this.BuildInternal()
         return $this.Processor.Output
@@ -432,7 +474,7 @@ class MergerBuilder {
                 $Dynamic.Tmp.Set($Dynamic.Template)
 
                 foreach($Field in $Dynamic.Fields) {
-                    $Dynamic.Tmp.ReplaceField($Field, $Object.$($this.Request.FieldFormat.Unformat($Field)))
+                    $Dynamic.Tmp.ReplaceField($Field, $this.FieldResolver.Resolve($Object, $Field))
                 }
                 switch ($this.Processor.GetRequiredBuildType()) {
                     ([BuildType]::Separated) {

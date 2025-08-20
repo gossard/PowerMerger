@@ -93,6 +93,7 @@ class MergerBuilder {
     [MergerProcessor]$Processor
     [System.Collections.Generic.List[BuildListener]]$Listeners
     [BuildEvent]$BuildEvent
+    [FieldResolver]$FieldResolver
 
     [System.Collections.Generic.List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
         $this.MasterContent = New-Object MasterContent
@@ -105,6 +106,7 @@ class MergerBuilder {
             $this.Listeners.Add((New-Object BuildProgress))
         }
         $this.BuildEvent = New-Object BuildEvent
+        $this.FieldResolver = New-Object FieldResolver -ArgumentList $Request.FieldFormat
 
         $this.BuildInternal()
         return $this.Processor.Output
@@ -173,7 +175,7 @@ class MergerBuilder {
                 $Dynamic.Tmp.Set($Dynamic.Template)
 
                 foreach($Field in $Dynamic.Fields) {
-                    $Dynamic.Tmp.ReplaceField($Field, $Object.$($this.Request.FieldFormat.Unformat($Field)))
+                    $Dynamic.Tmp.ReplaceField($Field, $this.FieldResolver.Resolve($Object, $Field))
                 }
                 switch ($this.Processor.GetRequiredBuildType()) {
                     ([BuildType]::Separated) {

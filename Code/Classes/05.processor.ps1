@@ -91,7 +91,7 @@ class OutFileProcessor : MergerProcessor {
         if($this.IsCombined()) {
             $FileName = $this.FileOrProperty
         } else {
-            $FileName = $BuildEvent.Object.$($this.FileOrProperty)
+            $FileName = [PowerMergerUtils]::GetNestedPropertyValue($BuildEvent.Object, $this.FileOrProperty)
             if([string]::IsNullOrWhiteSpace($FileName)) {
                 $FileName = $this.GenerateFileName($BuildEvent)
             }
