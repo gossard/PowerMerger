@@ -2,6 +2,14 @@
 
 PowerMerger is a PowerShell tool for generating text from templates and data. Its core strength is its simplicity: it processes plain text templates line by line. This straightforward approach makes PowerMerger intuitive and easy to use for common automation tasks, without the overhead of a complex templating language.
 
+> **A Note on Scope and Philosophy**
+>
+> PowerMerger was originally developed for my personal automation needs and has been made public in the hope that it might be useful to others. It is intentionally designed for **very basic templating tasks** based on a "logic-less" philosophy.
+>
+> It is not intended to be a feature-rich replacement for enterprise-grade templating platforms like *Scriban* or *Mustache*. If you are looking to invest in a single, powerful templating system as a standard for your organization, PowerMerger is likely not the right choice.
+>
+> Think of it as a powerful **tactical tool** for specific scripting and reporting tasks, not a **strategic platform** to build an entire ecosystem around. Its value lies in its minimal learning curve and its ability to solve the "80% use case" of simple data merging without complexity.
+
 - [Key Features](#key-features)
 - [Common Use Cases](#common-use-cases)
 - [Prerequisites](#prerequisites)
@@ -54,9 +62,26 @@ PowerMerger is a versatile tool that can be used in a wide range of automation s
 
 ## Installation
 
-Clone this repository and import the module directly:
+The recommended way to install PowerMerger is to place it in your PowerShell module path. This is the standard practice for PowerShell modules and allows PowerShell to find and load it automatically by name.
+
+This method ensures that all features, including creating custom processors with `using module PowerMerger`, work correctly and that your scripts remain portable.
+
+**1. Clone the repository into your module directory.**
+
+The following command automatically finds the correct path for the current user and clones the module into a `PowerMerger` subfolder, which is the required structure.
+
 ```powershell
-Import-Module -Name .\Path\To\PowerMerger.psm1
+# This command clones the repo into the first path listed in your PSModulePath
+# (usually C:\Users\<YourName>\Documents\PowerShell\Modules)
+$modulePath = ($env:PSModulePath -split ';')[0]
+git clone https://github.com/gossard/PowerMerger.git (Join-Path $modulePath "PowerMerger")
+```
+
+**2. Import the module.**
+
+```powershell
+# Import by name (required for PS 5.1, automatic in PS 7+)
+Import-Module PowerMerger
 ```
 
 ## Quick Start: Generate a single document
@@ -395,23 +420,25 @@ Processors determine what to do with the generated output. You create one and pa
 
 - **`New-MergerOutStringProcessor`**: Returns the generated content as one or more strings. This is useful for further processing in PowerShell.
 - **`New-MergerOutFileProcessor`**: Saves the generated content to files.
-  - **Combined mode:** Use `-FileName <string>` to save all output to a single file.
-  - **Separated mode:** Use `-PropertyName <string>` to specify which property on your objects contains the name for each individual file.
-  - **Encoding:** Uses PowerShell’s default `Out-File` encoding (see [Encoding](#encoding)).
 
-  Behavior:
-  - Applies to both modes:
-    - The destination directory (`-DestDir`) must exist (validated).
-    - File names are used as-is; no sanitization. Invalid characters will cause an error.
-    - Extension resolution: uses `-Extension` if provided; otherwise:
-      - Combined: inferred from `-FileName` (if present), otherwise from `-TemplatePath`.
-      - Separated: inferred from `-TemplatePath`.
-    - Existing files are overwritten (`Out-File -Force`).
-  - Combined mode:
-    - The file name comes from `-FileName`.
-  - Separated mode:
-    - The file name comes from the object property given by `-PropertyName`; if empty/null, a fallback like `noname(index-XX)` is used.
-- **`New-MergerEmptyProcessor`**: Runs the entire build process but discards all output. This is useful for testing or for scenarios where you only need side effects (like the progress bar).
+  **Behavior Details:**
+
+  *   **File Naming**
+      - **Combined Mode (`-FileName`):** The entire output is saved to a single file. The name is taken directly from the `-FileName` parameter.
+      - **Separated Mode (`-PropertyName`):** A separate file is created for each object. The base name of each file is taken from the value of the property you specify (e.g., if `-PropertyName 'UserName'` and an object has `$user.UserName = 'alice'`, the base name will be `alice`).
+        - **Fallback:** If an object's property is null or empty, a fallback name like `noname(index-01)` is automatically generated.
+
+  *   **File Extension Logic**
+      The processor determines the file extension using the following priority:
+      1.  It will always use the value from the `-Extension` parameter if provided.
+      2.  If `-Extension` is not provided, it tries to infer the extension from another source:
+          - In **Combined mode**: from the `-FileName` parameter (e.g., `report.html` implies `.html`).
+          - In **all modes**: as a last resort, from the template file path (`-TemplatePath`).
+
+  *   **Important Rules**
+      - **Destination Directory:** The path provided to `-DestDir` **must exist** before running the command.
+      - **Overwriting:** Existing files at the destination **will be overwritten** without warning (uses `Out-File -Force`).
+      - **No Sanitization:** Filenames are used as-is. If a property contains characters that are invalid for a filename (like `:`, `\`, or `?`), the operation will fail for that file.
 
 ### `New-MergerBuild`
 The engine that executes the merge operation. It takes a `MergerRequest` and a `MergerProcessor`. It's designed to be used at the end of a pipeline.
