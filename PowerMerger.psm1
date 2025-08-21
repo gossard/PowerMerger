@@ -1,4 +1,4 @@
-﻿# Built on 08/20/2025 16:13:17
+﻿# Built on 08/21/2025 08:55:34
 class PowerMergerUtils {
 
     hidden PowerMergerUtils() {}
@@ -10,6 +10,9 @@ class PowerMergerUtils {
         [string[]]$Properties = $PropertyPath.Split('.')
         [object]$CurrentObject = $BaseObject
         foreach($Property in $Properties) {
+            if($null -eq $CurrentObject) {
+                return $null
+            }
             $PropertyInfo = $CurrentObject.psobject.Properties[$Property]
             if($null -eq $PropertyInfo) {
                 return $null
