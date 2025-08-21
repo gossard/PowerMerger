@@ -238,6 +238,23 @@ Placeholders are markers in your template, like `%FieldName%`, that will be repl
 - **Static Placeholders:** These are replaced once for the entire document. You define them using the `-StaticFields` parameter. They work anywhere in your template, both inside and outside of dynamic sections.
 - **Object Placeholders:** These correspond to the properties of your data objects (passed via the `-Object` parameter). They are **only replaced inside a Dynamic Section**.
 
+You can also access nested properties using standard dot notation. For example, given an object like this:
+
+```powershell
+$data = @{
+    User = @{
+        Name = 'Alice'
+        Address = @{
+            City = 'Paris'
+        }
+    }
+}
+```
+
+You could use the following placeholders in your template:
+- `%User.Name%` would be replaced with `Alice`.
+- `%User.Address.City%` would be replaced with `Paris`.
+
 ### 2. Dynamic Sections
 
 A Dynamic Section is a block of text that repeats for every object in your data collection. You can have **multiple, independent dynamic sections** in a single template to build complex documents.
@@ -425,7 +442,7 @@ Processors determine what to do with the generated output. You create one and pa
 
   *   **File Naming**
       - **Combined Mode (`-FileName`):** The entire output is saved to a single file. The name is taken directly from the `-FileName` parameter.
-      - **Separated Mode (`-PropertyName`):** A separate file is created for each object. The base name of each file is taken from the value of the property you specify (e.g., if `-PropertyName 'UserName'` and an object has `$user.UserName = 'alice'`, the base name will be `alice`).
+      - **Separated Mode (`-PropertyName`):** A separate file is created for each object. The base name of each file is taken from the value of the property you specify. **Nested properties are supported using dot notation (e.g., `-PropertyName 'User.FileName'`).**
         - **Fallback:** If an object's property is null or empty, a fallback name like `noname(index-01)` is automatically generated.
 
   *   **File Extension Logic**
@@ -572,22 +589,21 @@ If your processor needs to return data, add it to the `$this.Output` list proper
 
 ## Known Limitations
 
-- Dynamic sections:
+- **Dynamic Sections:**
   - The dynamic marker (e.g., `%Dynamic%`) must be on its own line and appear in pairs (open/close).
   - Nested dynamic sections are not supported.
-- Replacement scope:
+- **Replacement Scope:**
   - Object placeholders (from your data objects) are only replaced inside dynamic sections.
-  - Static placeholders (provided via -StaticFields) are replaced everywhere.
+  - Static placeholders (provided via `-StaticFields`) are replaced everywhere.
   - Missing or null properties render as an empty string inside dynamic sections.
-- Placeholders:
-  - Field wrappers are symmetric (e.g., %...%, @@...@@). With the current implementation, avoid wrappers that contain regex metacharacters (., +, *, |, etc.).
+- **Placeholders:**
+  - Field wrappers are symmetric (e.g., `%...%`, `@@...@@`). With the current implementation, avoid wrappers that contain regex metacharacters (`.`, `+`, `*`, `|`, etc.).
   - There is no built-in escaping to render a placeholder literally (e.g., to output "%Name%" verbatim).
-- Properties and formatting:
-  - Accessing arrays/collection items by index (e.g., `Items[0]`) are not supported
-  - Arrays/collections are rendered via `.ToString()` (often “System.Object[]”). Pre-format them (e.g., `-join ', '`) before merging.
-- Memory/performance:
-  - In Combined mode, the entire output is aggregated in memory before emission. For very large data sets, prefer Separated mode.
-- Misc:
+- **Property Access:** Nested properties (e.g., `User.Address.City`) are supported, but accessing collection items by index (e.g., `Items[0]`) is not.
+- **Collection Formatting:** Array or collection properties are rendered via `.ToString()` (often as “System.Object[]”). They should be pre-formatted into a string (e.g., with `-join ', '`) before merging.
+- **Memory/Performance:**
+  - In `Combined` mode, the entire output is aggregated in memory before emission. For very large data sets, prefer `Separated` mode.
+- **Misc:**
   - Unreplaced placeholders remain as-is in the output.
   - No conditional logic or loops beyond repeating dynamic sections.
   - The progress bar relies on `Write-Progress` and may not display in non-interactive hosts.
