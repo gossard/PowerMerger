@@ -97,6 +97,7 @@ class OutFileProcessor : MergerProcessor {
             }
         }
         $FileName = [System.IO.Path]::ChangeExtension($FileName, $this.Extension)
+        New-Item -Path $this.DestDir -ItemType Directory -Force | Out-Null
         [string]$FilePath = Join-Path $this.DestDir -ChildPath $FileName
         $BuildEvent.Content | Out-File -FilePath $FilePath -Force
     }

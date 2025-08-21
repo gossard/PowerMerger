@@ -10,9 +10,9 @@ function New-MergerOutFileProcessor {
         [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$PropertyName,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({ Test-Path $_ -PathType Container })]
-        [string]$DestDir,
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
+        [string]$DestDir = '.',
 
         [Parameter(Mandatory=$false)]
         [string]$Extension

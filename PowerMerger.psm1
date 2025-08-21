@@ -1,4 +1,4 @@
-﻿# Built on 08/21/2025 08:55:34
+﻿# Built on 08/21/2025 11:02:19
 class PowerMergerUtils {
 
     hidden PowerMergerUtils() {}
@@ -257,6 +257,7 @@ class OutFileProcessor : MergerProcessor {
             }
         }
         $FileName = [System.IO.Path]::ChangeExtension($FileName, $this.Extension)
+        New-Item -Path $this.DestDir -ItemType Directory -Force | Out-Null
         [string]$FilePath = Join-Path $this.DestDir -ChildPath $FileName
         $BuildEvent.Content | Out-File -FilePath $FilePath -Force
     }
@@ -560,9 +561,9 @@ function New-MergerOutFileProcessor {
         [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
         [string]$PropertyName,
 
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({ Test-Path $_ -PathType Container })]
-        [string]$DestDir,
+        [Parameter(Mandatory=$false)]
+        [ValidateScript({ -not [string]::IsNullOrWhiteSpace($_) })]
+        [string]$DestDir = '.',
 
         [Parameter(Mandatory=$false)]
         [string]$Extension

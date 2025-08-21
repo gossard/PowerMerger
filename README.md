@@ -215,11 +215,9 @@ $request = New-MergerRequest -TemplatePath ".\user-profiles.html" `
     -StaticFields @{ SystemName = 'PowerMerger Automation' } `
     -Object $users
 
-# Ensure that the destination directory exists.
-New-Item -ItemType Directory -Force -Path '.\output' | Out-Null
-
 # Use the OutFileProcessor in "Separated" mode.
 # We tell it to use the 'Name' property from each object as the base for the filename.
+# The destination directory will be created if it doesn't exist.
 $processor = New-MergerOutFileProcessor -PropertyName 'Name' -DestDir ".\output" -Extension ".html"
 
 $request | New-MergerBuild -Processor $processor
@@ -348,7 +346,7 @@ For large datasets, you can enable a progress bar using the `-ProgressGranularit
 
 ```powershell
 # 1. Generate a large sample dataset
-$largeDataset = 1..200 | ForEach-Object {
+$largeDataset = 1..2000 | ForEach-Object {
     [pscustomobject]@{ Id = $_; Name = "Item-$_" }
 }
 
@@ -379,15 +377,13 @@ When you run this script, a progress bar will appear and update as the items are
 ```
 MergingObject
 [ooooooooooooooooooooooooooooooooooooooooooooooooo                               ]
-Status: 100/200
+Status: 1000/2000
 50%
 ```
 
 *(The visual appearance may vary based on your PowerShell version and host.)*
 
 ## Encoding
-
-This section applies to the built-in processors:
 
 - `New-MergerOutFileProcessor` writes files using PowerShell’s `Out-File` and therefore inherits PowerShell’s default encoding:
   
@@ -440,6 +436,8 @@ Processors determine what to do with the generated output. You create one and pa
 
   **Behavior Details:**
 
+  * **Destination Directory:** The `-DestDir <string>` parameter is optional and defaults to the current directory (`.`). The directory will be created if it does not exist.
+
   *   **File Naming**
       - **Combined Mode (`-FileName`):** The entire output is saved to a single file. The name is taken directly from the `-FileName` parameter.
       - **Separated Mode (`-PropertyName`):** A separate file is created for each object. The base name of each file is taken from the value of the property you specify. **Nested properties are supported using dot notation (e.g., `-PropertyName 'User.FileName'`).**
@@ -453,7 +451,6 @@ Processors determine what to do with the generated output. You create one and pa
           - In **all modes**: as a last resort, from the template file path (`-TemplatePath`).
 
   *   **Important Rules**
-      - **Destination Directory:** The path provided to `-DestDir` **must exist** before running the command.
       - **Overwriting:** Existing files at the destination **will be overwritten** without warning (uses `Out-File -Force`).
       - **No Sanitization:** Filenames are used as-is. If a property contains characters that are invalid for a filename (like `:`, `\`, or `?`), the operation will fail for that file.
 

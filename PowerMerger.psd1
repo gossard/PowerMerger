@@ -12,7 +12,7 @@
 RootModule = 'PowerMerger'
 
 # Numéro de version de ce module.
-ModuleVersion = '1.0'
+ModuleVersion = '1.0.1'
 
 # Éditions PS prises en charge
 # CompatiblePSEditions = @()
