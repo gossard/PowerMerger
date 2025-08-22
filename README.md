@@ -135,22 +135,42 @@ The core principle is simple: if a command returns a collection of objects, you 
 
 Here are a few practical examples.
 
-### Example: Generating a Single Report from Active Directory Users
+### Example: Generating a Single Report from System Processes
 
-Let's create a simple HTML contact list for all users in a specific department and save it directly to a single file.
+Let's create a simple HTML report listing the top 10 running processes, sorted by memory usage, and save it directly to a single file.
 
-**1. The Template (`ad-report.html`):**
+**1. The Template (`process-report.html`):**
 
 ```html
-<h1>Sales Department Contacts</h1>
-<p>Generated on: %ReportDate%</p>
-<hr>
-%Dynamic%
-<div class="user-card">
-  <h3>%GivenName% %Surname%</h3>
-  <p>Email: %EmailAddress%</p>
-</div>
-%Dynamic%
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Process Report</title>
+</head>
+<body>
+    <h1>Running Processes Report</h1>
+    <p>Generated on: %ReportDate%</p>
+    <hr>
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Process Name</th>
+                <th>ID</th>
+                <th>Memory (Working Set)</th>
+            </tr>
+        </thead>
+        <tbody>
+            %Dynamic%
+            <tr>
+                <td>%Name%</td>
+                <td>%Id%</td>
+                <td>%WorkingSet%</td>
+            </tr>
+            %Dynamic%
+        </tbody>
+    </table>
+</body>
+</html>
 ```
 
 **2. The PowerShell script:**
@@ -158,21 +178,23 @@ Let's create a simple HTML contact list for all users in a specific department a
 To save the merged output as a single file, we use the `New-MergerOutFileProcessor` in its **Combined** mode by providing the `-FileName` parameter.
 
 ```powershell
-# Requires RSAT / Active Directory module
-Import-Module ActiveDirectory
+# 1. Get the top 10 processes by memory usage. 
+#    This command works on any system.
+$processes = Get-Process | Sort-Object -Property WorkingSet -Descending | Select-Object -First 10
 
-# We directly use the output of Get-ADUser as our data source.
-$users = Get-ADUser -Filter 'Department -eq "Sales"' -Properties GivenName, Surname, EmailAddress
+# 2. Create the request, using the template and providing a static field for the date.
+#    The process list is passed to the -Object parameter.
+$request = New-MergerRequest -TemplatePath ".\process-report.html" `
+    -StaticFields @{ ReportDate = (Get-Date).ToString('yyyy-MM-dd HH:mm') } `
+    -Object $processes
 
-$request = New-MergerRequest -TemplatePath ".\ad-report.html" `
-    -StaticFields @{ ReportDate = (Get-Date).ToString('yyyy-MM-dd') } `
-    -Object $users
+# 3. Create the processor to output to a single file.
+$processor = New-MergerOutFileProcessor -FileName "Process_Report.html" -DestDir "."
 
-$processor = New-MergerOutFileProcessor -FileName "Sales_Department_Report.html" -DestDir "."
-
+# 4. Execute the build and generate the report.
 $request | New-MergerBuild -Processor $processor
 
-Write-Host "Report generated successfully at .\Sales_Department_Report.html"
+Write-Host "Report generated successfully at .\Process_Report.html"
 ```
 
 ### Example: Generating Multiple Files from a CSV
@@ -218,7 +240,7 @@ $request = New-MergerRequest -TemplatePath ".\user-profiles.html" `
 # Use the OutFileProcessor in "Separated" mode.
 # We tell it to use the 'Name' property from each object as the base for the filename.
 # The destination directory will be created if it doesn't exist.
-$processor = New-MergerOutFileProcessor -PropertyName 'Name' -DestDir ".\output" -Extension ".html"
+$processor = New-MergerOutFileProcessor -PropertyName 'Name' -DestDir ".\output"
 
 $request | New-MergerBuild -Processor $processor
 ```
