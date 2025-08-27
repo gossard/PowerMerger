@@ -20,7 +20,11 @@ class FieldFormat {
     }
 
     [string]Unformat([string]$Field) {
-        return $Field.Replace($this.FieldWrapper, [string]::Empty)
+        [System.Text.RegularExpressions.Match]$Match = [regex]::Match($Field, $this.Pattern)
+        if($Match.Success) {
+            return $Match.Groups[1].Value
+        }
+        return $Field
     }
 
 }

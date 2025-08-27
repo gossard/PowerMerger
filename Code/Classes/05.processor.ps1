@@ -3,7 +3,7 @@
     [System.Collections.Generic.List[object]]$Output
 
     MergerProcessor() : base() {
-        $this.Output = New-Object System.Collections.Generic.List[object]
+        $this.Output = [System.Collections.Generic.List[object]]::new()
     }
 
     <# abstract #> [BuildType]GetRequiredBuildType() {
@@ -97,7 +97,7 @@ class OutFileProcessor : MergerProcessor {
             }
         }
         $FileName = [System.IO.Path]::ChangeExtension($FileName, $this.Extension)
-        New-Item -Path $this.DestDir -ItemType Directory -Force | Out-Null
+        New-Item -Path $this.DestDir -ItemType Directory -Force
         [string]$FilePath = Join-Path $this.DestDir -ChildPath $FileName
         $BuildEvent.Content | Out-File -FilePath $FilePath -Force
     }
@@ -112,7 +112,7 @@ class OutFileProcessor : MergerProcessor {
     }
 
     hidden [bool]IsCombined() {
-        return $this.BuildType -eq ([BuildType]::Combined)
+        return $this.BuildType -eq [BuildType]::Combined
     }
 
     [BuildType]GetRequiredBuildType() {

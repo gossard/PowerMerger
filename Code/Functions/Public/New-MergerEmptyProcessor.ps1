@@ -6,5 +6,5 @@ function New-MergerEmptyProcessor {
         [ValidateNotNull()]
         [BuildType]$BuildType = [BuildType]::Combined
     )
-    New-Object EmptyProcessor -ArgumentList $BuildType
+    [EmptyProcessor]::new($BuildType)
 }

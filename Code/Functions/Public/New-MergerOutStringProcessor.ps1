@@ -6,5 +6,5 @@ function New-MergerOutStringProcessor {
         [ValidateNotNull()]
         [BuildType]$BuildType = [BuildType]::Combined
     )
-    New-Object OutStringProcessor -ArgumentList $BuildType
+    [OutStringProcessor]::new($BuildType)
 }

@@ -18,8 +18,8 @@ function New-MergerOutFileProcessor {
         [string]$Extension
     )
     if($PSCmdlet.ParameterSetName -eq 'Combined') {
-        New-Object OutFileProcessor -ArgumentList ([BuildType]::Combined), $FileName, $DestDir, $Extension
+        [OutFileProcessor]::new([BuildType]::Combined, $FileName, $DestDir, $Extension)
     } else {
-        New-Object OutFileProcessor -ArgumentList ([BuildType]::Separated), $PropertyName, $DestDir, $Extension
+        [OutFileProcessor]::new([BuildType]::Separated, $PropertyName, $DestDir, $Extension)
     }
 }

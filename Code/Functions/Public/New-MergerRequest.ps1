@@ -33,7 +33,7 @@ function New-MergerRequest {
             # Strange behavior with this:
             # $TemplateContent = Get-Content -Path $TemplatePath -Raw -Force
 
-            [System.Text.StringBuilder]$Sb = New-Object System.Text.StringBuilder
+            [System.Text.StringBuilder]$Sb = [System.Text.StringBuilder]::new()
             [boolean]$FirstLine = $true
             Get-Content -Path $TemplatePath -Force | ForEach-Object {
                 if(-not $FirstLine) {
@@ -44,7 +44,8 @@ function New-MergerRequest {
             }
             $TemplateContent = $Sb.ToString()
         }
-        [MergerRequest]$Request = New-Object MergerRequest -ArgumentList $TemplatePath, $TemplateContent, $FieldWrapper, $DynamicContentField, $StaticFields, $ProgressGranularity
+        [MergerRequest]$Request = [MergerRequest]::new(
+            $TemplatePath, $TemplateContent, $FieldWrapper, $DynamicContentField, $StaticFields, $ProgressGranularity)
     }
     process{
         foreach($Obj in $Object) {
