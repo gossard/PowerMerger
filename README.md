@@ -1,14 +1,10 @@
 # PowerMerger
 
-PowerMerger is a PowerShell tool for generating text from templates and data. Its core strength is its simplicity: it processes plain text templates line by line. This straightforward approach makes PowerMerger intuitive and easy to use for common automation tasks, without the overhead of a complex templating language.
+PowerMerger is a PowerShell tool for generating text from templates and data. It was born from a personal need for a straightforward automation tool and is shared in the hope that it might be useful to others.
 
-> **A Note on Scope and Philosophy**
->
-> PowerMerger was originally developed for my personal automation needs and has been made public in the hope that it might be useful to others. It is intentionally designed for **very basic templating tasks** based on a "logic-less" philosophy.
->
-> It is not intended to be a feature-rich replacement for enterprise-grade templating platforms like *Scriban* or *Mustache*. If you are looking to invest in a single, powerful templating system as a standard for your organization, PowerMerger is likely not the right choice.
->
-> Think of it as a powerful **tactical tool** for specific scripting and reporting tasks, not a **strategic platform** to build an entire ecosystem around. Its value lies in its minimal learning curve and its ability to solve the "80% use case" of simple data merging without complexity.
+Instead of a complex templating language, PowerMerger uses a simple, line-by-line "find and replace" approach, enhanced with the ability to repeat dynamic sections for your data.
+
+Because of this, PowerMerger is not a replacement for full-featured engines like Mustache or Scriban. If your templates require conditional logic (if/else), loops, or other advanced features, those tools are a better choice. Its value lies in its minimal learning curve and its ability to solve the most common automation tasks quickly and without complexity.
 
 - [Key Features](#key-features)
 - [Common Use Cases](#common-use-cases)
