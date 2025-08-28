@@ -1,17 +1,13 @@
 # PowerMerger
 
-PowerMerger is a PowerShell tool for generating text from templates and data. Its core strength is its simplicity: it processes plain text templates line by line. This straightforward approach makes PowerMerger intuitive and easy to use for common automation tasks, without the overhead of a complex templating language.
+PowerMerger is a PowerShell tool for generating text from templates and data. It was born from a personal need for a straightforward automation tool and is shared in the hope that it might be useful to others.
 
-> **A Note on Scope and Philosophy**
->
-> PowerMerger was originally developed for my personal automation needs and has been made public in the hope that it might be useful to others. It is intentionally designed for **very basic templating tasks** based on a "logic-less" philosophy.
->
-> It is not intended to be a feature-rich replacement for enterprise-grade templating platforms like *Scriban* or *Mustache*. If you are looking to invest in a single, powerful templating system as a standard for your organization, PowerMerger is likely not the right choice.
->
-> Think of it as a powerful **tactical tool** for specific scripting and reporting tasks, not a **strategic platform** to build an entire ecosystem around. Its value lies in its minimal learning curve and its ability to solve the "80% use case" of simple data merging without complexity.
+Instead of a complex templating language, PowerMerger uses a simple, line-by-line "find and replace" approach, enhanced with the ability to repeat dynamic sections for your data.
+
+Because of this, PowerMerger is not a replacement for full-featured engines like Mustache or Scriban. If your templates require conditional logic (if/else), loops, or other advanced features, those tools are a better choice. Its value lies in its minimal learning curve and its ability to solve the most common automation tasks quickly and without complexity.
 
 - [Key Features](#key-features)
-- [Common Use Cases](#common-use-cases)
+- [Examples of Use Cases](#examples-of-use-cases)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Quick Start: Generate a single document](#quick-start-generate-a-single-document)
@@ -33,26 +29,19 @@ PowerMerger is a PowerShell tool for generating text from templates and data. It
 - **Customizable Markers:** Change the default placeholder wrapper (`%`) and dynamic section name to fit your needs.
 - **Progress Bar:** An optional progress bar shows the status when processing large datasets.
 
-## Common Use Cases
+## Examples of Use Cases
 
-PowerMerger is a versatile tool that can be used in a wide range of automation scenarios. Here are just a few ideas:
+*   **Reporting from Scripts:**
+    *   Generate a summary report after an automated task completes, such as a server maintenance or backup script.
+    *   Produce a clean CSV file from a complex object, selecting only the properties you need.
 
-- **IT Reporting:**
-  - Generate daily HTML reports on the status of Active Directory users or computers.
-  - Create CSV summaries from complex PowerShell objects.
-  - Build Markdown documentation for your infrastructure.
+*   **Generating Files in Bulk:**
+    *   Create printable labels for new employees by pulling data from Active-Directory.
+    *   Generate 100 slightly different XML or JSON configuration files for an application, based on a single template and a CSV of server names.
 
-- **Configuration Management:**
-  - Create JSON or XML configuration files for a fleet of servers based on a CSV input file.
-  - Generate PowerShell DSC (Desired State Configuration) files from a central data source.
-  - Automate the creation of SQL scripts for database setup or migrations.
-
-- **Communications:**
-  - Generate personalized letters or documents.
-
-- **Development & DevOps:**
-  - Scaffold new code modules or classes from templates.
-  - Generate deployment scripts tailored to different environments (Dev, Test, Prod).
+*   **Simple Document Generation:**
+    *   Create personalized welcome letters or documents for new hires.
+    *   Build a simple Markdown inventory of your servers or applications.
 
 ## Prerequisites
 - PowerShell:
