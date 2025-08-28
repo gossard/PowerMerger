@@ -1,9 +1,9 @@
 class ContentBuffer {
 
-    [System.Text.StringBuilder]$Buffer
+    [StringBuilder]$Buffer
 
     ContentBuffer() {
-        $this.Buffer = [System.Text.StringBuilder]::new()
+        $this.Buffer = [StringBuilder]::new()
     }
 
     [string]ToString() {
@@ -15,7 +15,7 @@ class ContentBuffer {
     }
 
     [void]NewLine() {
-        $this.Buffer.AppendLine([String]::Empty)
+        $this.Buffer.AppendLine([string]::Empty)
     }
 
     [void]Append([string]$Value) {
@@ -72,11 +72,11 @@ class MasterContent : MergerContent {
 class DynamicContent : MergerContent {
 
     [string]$PlaceholderField
-    [System.Collections.Generic.HashSet[string]]$Fields
+    [HashSet[string]]$Fields
 
     DynamicContent([string]$PlaceholderField) : base() {
         $this.PlaceholderField = $PlaceholderField
-        $this.Fields = [System.Collections.Generic.HashSet[string]]::new()
+        $this.Fields = [HashSet[string]]::new()
     }
 
     [bool]IsDynamic() {
@@ -88,19 +88,19 @@ class DynamicContent : MergerContent {
 class MergerBuilder {
 
     [MasterContent]$MasterContent
-    [System.Collections.Generic.List[DynamicContent]]$DynamicContents
+    [List[DynamicContent]]$DynamicContents
     [MergerRequest]$Request
     [MergerProcessor]$Processor
-    [System.Collections.Generic.List[BuildListener]]$Listeners
+    [List[BuildListener]]$Listeners
     [BuildEvent]$BuildEvent
     [FieldResolver]$FieldResolver
 
     [System.Collections.Generic.List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
         $this.MasterContent = [MasterContent]::new()
-        $this.DynamicContents = [System.Collections.Generic.List[DynamicContent]]::new()
+        $this.DynamicContents = [List[DynamicContent]]::new()
         $this.Request = $Request
         $this.Processor = $Processor
-        $this.Listeners = [System.Collections.Generic.List[BuildListener]]::new()
+        $this.Listeners = [List[BuildListener]]::new()
         $this.Listeners.Add($Processor)
         if($Request.ProgressGranularity -gt 0) {
             $this.Listeners.Add([BuildProgress]::new())
@@ -146,20 +146,23 @@ class MergerBuilder {
         # Replace Static Fields
         # =====================
         $this.MasterContent.Tmp.ReplaceFields($this.Request.StaticFields)
-        $this.DynamicContents | ForEach-Object { $_.Tmp.ReplaceFields($this.Request.StaticFields) }
+        foreach($Dynamic in $this.DynamicContents) {
+            $Dynamic.Tmp.ReplaceFields($this.Request.StaticFields)
+        }
         # ==============
         # Init Templates
         # ==============
         $this.MasterContent.Template = $this.MasterContent.Tmp.ToString()
-        $this.DynamicContents | ForEach-Object { $_.Template = $_.Tmp.ToString() }
+        foreach($Dynamic in $this.DynamicContents) {
+            $Dynamic.Template = $Dynamic.Tmp.ToString()
+        }
         # ===================
         # Find Dynamic Fields
         # ===================
         foreach($Dynamic in $this.DynamicContents) {
-            Select-String -InputObject $Dynamic.Template -Pattern $this.Request.FieldFormat.Pattern -AllMatches | ForEach-Object {
-                foreach($Field in $_.Matches) {
-                    $Dynamic.Fields.Add($Field)
-                }
+            $MatchInfos = Select-String -InputObject $Dynamic.Template -Pattern $this.Request.FieldFormat.Pattern -AllMatches
+            foreach($Match in $MatchInfos.Matches) {
+                $Dynamic.Fields.Add($Match.Value)
             }
         }
         # =============
@@ -218,7 +221,9 @@ class MergerBuilder {
     }
 
     hidden [void]NotifyAll([BuildEvent]$BuildEvent) {
-        $this.Listeners | ForEach-Object { $_.BuildStateChanged($BuildEvent) }
+        foreach($Listener in $this.Listeners) {
+            $Listener.BuildStateChanged($BuildEvent)
+        }
     }
 
 }

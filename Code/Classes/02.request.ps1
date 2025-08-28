@@ -6,7 +6,7 @@ class MergerRequest {
     [string]$DynamicContentField
     [hashtable]$StaticFields
     [int]$ProgressGranularity
-    [System.Collections.Generic.List[object]]$Objects
+    [List[object]]$Objects
 
     MergerRequest(
         [string]$TemplatePath,
@@ -25,7 +25,7 @@ class MergerRequest {
             $this.StaticFields[$this.FieldFormat.Format($Key)] = $StaticFields[$Key]
         }
         $this.ProgressGranularity = $ProgressGranularity
-        $this.Objects = [System.Collections.Generic.List[object]]::new()
+        $this.Objects = [List[object]]::new()
     }
 
     [void]AddObject([object]$Object) {

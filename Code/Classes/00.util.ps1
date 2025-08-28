@@ -1,7 +1,7 @@
 class PowerMergerUtils {
 
     hidden PowerMergerUtils() {
-        throw [System.InvalidOperationException]::new("Cannot instanciate [PowerMergerUtils] because it is a static utility class.")
+        throw [InvalidOperationException]::new("Cannot instantiate 'PowerMergerUtils'.")
     }
 
     static [object]GetNestedPropertyValue([object]$BaseObject, [string]$PropertyPath) {

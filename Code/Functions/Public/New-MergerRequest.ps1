@@ -33,7 +33,7 @@ function New-MergerRequest {
             # Strange behavior with this:
             # $TemplateContent = Get-Content -Path $TemplatePath -Raw -Force
 
-            [System.Text.StringBuilder]$Sb = [System.Text.StringBuilder]::new()
+            [StringBuilder]$Sb = [StringBuilder]::new()
             [boolean]$FirstLine = $true
             Get-Content -Path $TemplatePath -Force | ForEach-Object {
                 if(-not $FirstLine) {

@@ -4,7 +4,7 @@ function New-MergerBuild {
         [Parameter(Mandatory=$true)]
         [ValidateNotNull()]
         [MergerProcessor]$Processor,
-        
+
         [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
         [ValidateNotNull()]
         [MergerRequest]$Request

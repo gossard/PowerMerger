@@ -1,9 +1,9 @@
 <# abstract #> class MergerProcessor : BuildListener {
 
-    [System.Collections.Generic.List[object]]$Output
+    [List[object]]$Output
 
     MergerProcessor() : base() {
-        $this.Output = [System.Collections.Generic.List[object]]::new()
+        $this.Output = [List[object]]::new()
     }
 
     <# abstract #> [BuildType]GetRequiredBuildType() {
@@ -81,7 +81,7 @@ class OutFileProcessor : MergerProcessor {
         $Paths += $BuildEvent.Request.TemplatePath
         foreach($Path in $Paths) {
             if([string]::IsNullOrWhiteSpace($this.Extension)) {
-                $this.Extension = [System.IO.Path]::GetExtension($Path)
+                $this.Extension = [Path]::GetExtension($Path)
             }
         }
     }
@@ -96,10 +96,10 @@ class OutFileProcessor : MergerProcessor {
                 $FileName = $this.GenerateFileName($BuildEvent)
             }
         }
-        $FileName = [System.IO.Path]::ChangeExtension($FileName, $this.Extension)
+        $FileName = [Path]::ChangeExtension($FileName, $this.Extension)
         New-Item -Path $this.DestDir -ItemType Directory -Force
         [string]$FilePath = Join-Path $this.DestDir -ChildPath $FileName
-        $BuildEvent.Content | Out-File -FilePath $FilePath -Force
+        Out-File -FilePath $FilePath -InputObject $BuildEvent.Content -Force
     }
 
     hidden [string]GenerateFileName([BuildEvent]$BuildEvent) {

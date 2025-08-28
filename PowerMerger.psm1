@@ -1,8 +1,19 @@
-﻿# Built on 08/27/2025 15:21:15
+# Built on 08/28/2025 11:37:27
+
+# --- Content from PreContent.ps1 ---
+
+using namespace System
+using namespace System.Text
+using namespace System.IO
+using namespace System.Collections.Generic
+using namespace System.Text.RegularExpressions
+
+# --- Content from 00.util.ps1 ---
+
 class PowerMergerUtils {
 
     hidden PowerMergerUtils() {
-        throw [System.InvalidOperationException]::new("Cannot instanciate [PowerMergerUtils] because it is a static utility class.")
+        throw [InvalidOperationException]::new("Cannot instantiate 'PowerMergerUtils'.")
     }
 
     static [object]GetNestedPropertyValue([object]$BaseObject, [string]$PropertyPath) {
@@ -26,6 +37,9 @@ class PowerMergerUtils {
     }
 
 }
+
+# --- Content from 01.field.ps1 ---
+
 class FieldFormat {
 
     [string]$FieldWrapper
@@ -48,7 +62,7 @@ class FieldFormat {
     }
 
     [string]Unformat([string]$Field) {
-        [System.Text.RegularExpressions.Match]$Match = [regex]::Match($Field, $this.Pattern)
+        [Match]$Match = [regex]::Match($Field, $this.Pattern)
         if($Match.Success) {
             return $Match.Groups[1].Value
         }
@@ -75,6 +89,9 @@ class FieldResolver {
     }
 
 }
+
+# --- Content from 02.request.ps1 ---
+
 class MergerRequest {
 
     [string]$TemplatePath
@@ -83,7 +100,7 @@ class MergerRequest {
     [string]$DynamicContentField
     [hashtable]$StaticFields
     [int]$ProgressGranularity
-    [System.Collections.Generic.List[object]]$Objects
+    [List[object]]$Objects
 
     MergerRequest(
         [string]$TemplatePath,
@@ -102,7 +119,7 @@ class MergerRequest {
             $this.StaticFields[$this.FieldFormat.Format($Key)] = $StaticFields[$Key]
         }
         $this.ProgressGranularity = $ProgressGranularity
-        $this.Objects = [System.Collections.Generic.List[object]]::new()
+        $this.Objects = [List[object]]::new()
     }
 
     [void]AddObject([object]$Object) {
@@ -112,6 +129,9 @@ class MergerRequest {
     }
 
 }
+
+# --- Content from 03.event.ps1 ---
+
 enum BuildEventType {
     BuildBegin
     MergingObject
@@ -161,16 +181,22 @@ class BuildEvent {
     }
 
 }
+
+# --- Content from 04.buildtype.ps1 ---
+
 enum BuildType {
     Combined
     Separated
 }
+
+# --- Content from 05.processor.ps1 ---
+
 <# abstract #> class MergerProcessor : BuildListener {
 
-    [System.Collections.Generic.List[object]]$Output
+    [List[object]]$Output
 
     MergerProcessor() : base() {
-        $this.Output = [System.Collections.Generic.List[object]]::new()
+        $this.Output = [List[object]]::new()
     }
 
     <# abstract #> [BuildType]GetRequiredBuildType() {
@@ -248,7 +274,7 @@ class OutFileProcessor : MergerProcessor {
         $Paths += $BuildEvent.Request.TemplatePath
         foreach($Path in $Paths) {
             if([string]::IsNullOrWhiteSpace($this.Extension)) {
-                $this.Extension = [System.IO.Path]::GetExtension($Path)
+                $this.Extension = [Path]::GetExtension($Path)
             }
         }
     }
@@ -263,10 +289,10 @@ class OutFileProcessor : MergerProcessor {
                 $FileName = $this.GenerateFileName($BuildEvent)
             }
         }
-        $FileName = [System.IO.Path]::ChangeExtension($FileName, $this.Extension)
+        $FileName = [Path]::ChangeExtension($FileName, $this.Extension)
         New-Item -Path $this.DestDir -ItemType Directory -Force
         [string]$FilePath = Join-Path $this.DestDir -ChildPath $FileName
-        $BuildEvent.Content | Out-File -FilePath $FilePath -Force
+        Out-File -FilePath $FilePath -InputObject $BuildEvent.Content -Force
     }
 
     hidden [string]GenerateFileName([BuildEvent]$BuildEvent) {
@@ -287,6 +313,9 @@ class OutFileProcessor : MergerProcessor {
     }
 
 }
+
+# --- Content from 06.progress.ps1 ---
+
 class BuildProgress : BuildListener {
 
     BuildProgress() : base() {}
@@ -308,12 +337,15 @@ class BuildProgress : BuildListener {
     }
 
 }
+
+# --- Content from 07.builder.ps1 ---
+
 class ContentBuffer {
 
-    [System.Text.StringBuilder]$Buffer
+    [StringBuilder]$Buffer
 
     ContentBuffer() {
-        $this.Buffer = [System.Text.StringBuilder]::new()
+        $this.Buffer = [StringBuilder]::new()
     }
 
     [string]ToString() {
@@ -325,7 +357,7 @@ class ContentBuffer {
     }
 
     [void]NewLine() {
-        $this.Buffer.AppendLine([String]::Empty)
+        $this.Buffer.AppendLine([string]::Empty)
     }
 
     [void]Append([string]$Value) {
@@ -382,11 +414,11 @@ class MasterContent : MergerContent {
 class DynamicContent : MergerContent {
 
     [string]$PlaceholderField
-    [System.Collections.Generic.HashSet[string]]$Fields
+    [HashSet[string]]$Fields
 
     DynamicContent([string]$PlaceholderField) : base() {
         $this.PlaceholderField = $PlaceholderField
-        $this.Fields = [System.Collections.Generic.HashSet[string]]::new()
+        $this.Fields = [HashSet[string]]::new()
     }
 
     [bool]IsDynamic() {
@@ -398,19 +430,19 @@ class DynamicContent : MergerContent {
 class MergerBuilder {
 
     [MasterContent]$MasterContent
-    [System.Collections.Generic.List[DynamicContent]]$DynamicContents
+    [List[DynamicContent]]$DynamicContents
     [MergerRequest]$Request
     [MergerProcessor]$Processor
-    [System.Collections.Generic.List[BuildListener]]$Listeners
+    [List[BuildListener]]$Listeners
     [BuildEvent]$BuildEvent
     [FieldResolver]$FieldResolver
 
     [System.Collections.Generic.List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
         $this.MasterContent = [MasterContent]::new()
-        $this.DynamicContents = [System.Collections.Generic.List[DynamicContent]]::new()
+        $this.DynamicContents = [List[DynamicContent]]::new()
         $this.Request = $Request
         $this.Processor = $Processor
-        $this.Listeners = [System.Collections.Generic.List[BuildListener]]::new()
+        $this.Listeners = [List[BuildListener]]::new()
         $this.Listeners.Add($Processor)
         if($Request.ProgressGranularity -gt 0) {
             $this.Listeners.Add([BuildProgress]::new())
@@ -456,20 +488,23 @@ class MergerBuilder {
         # Replace Static Fields
         # =====================
         $this.MasterContent.Tmp.ReplaceFields($this.Request.StaticFields)
-        $this.DynamicContents | ForEach-Object { $_.Tmp.ReplaceFields($this.Request.StaticFields) }
+        foreach($Dynamic in $this.DynamicContents) {
+            $Dynamic.Tmp.ReplaceFields($this.Request.StaticFields)
+        }
         # ==============
         # Init Templates
         # ==============
         $this.MasterContent.Template = $this.MasterContent.Tmp.ToString()
-        $this.DynamicContents | ForEach-Object { $_.Template = $_.Tmp.ToString() }
+        foreach($Dynamic in $this.DynamicContents) {
+            $Dynamic.Template = $Dynamic.Tmp.ToString()
+        }
         # ===================
         # Find Dynamic Fields
         # ===================
         foreach($Dynamic in $this.DynamicContents) {
-            Select-String -InputObject $Dynamic.Template -Pattern $this.Request.FieldFormat.Pattern -AllMatches | ForEach-Object {
-                foreach($Field in $_.Matches) {
-                    $Dynamic.Fields.Add($Field)
-                }
+            $MatchInfos = Select-String -InputObject $Dynamic.Template -Pattern $this.Request.FieldFormat.Pattern -AllMatches
+            foreach($Match in $MatchInfos.Matches) {
+                $Dynamic.Fields.Add($Match.Value)
             }
         }
         # =============
@@ -528,17 +563,22 @@ class MergerBuilder {
     }
 
     hidden [void]NotifyAll([BuildEvent]$BuildEvent) {
-        $this.Listeners | ForEach-Object { $_.BuildStateChanged($BuildEvent) }
+        foreach($Listener in $this.Listeners) {
+            $Listener.BuildStateChanged($BuildEvent)
+        }
     }
 
 }
+
+# --- Content from New-MergerBuild.ps1 ---
+
 function New-MergerBuild {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]
         [ValidateNotNull()]
         [MergerProcessor]$Processor,
-        
+
         [Parameter(Mandatory=$true, ValueFromPipeline=$true)]
         [ValidateNotNull()]
         [MergerRequest]$Request
@@ -547,6 +587,9 @@ function New-MergerBuild {
         ([MergerBuilder]::new()).Build($Request, $Processor)
     }
 }
+
+# --- Content from New-MergerEmptyProcessor.ps1 ---
+
 function New-MergerEmptyProcessor {
     [CmdletBinding()]
     [OutputType([EmptyProcessor])]
@@ -557,6 +600,9 @@ function New-MergerEmptyProcessor {
     )
     [EmptyProcessor]::new($BuildType)
 }
+
+# --- Content from New-MergerOutFileProcessor.ps1 ---
+
 function New-MergerOutFileProcessor {
     [CmdletBinding(DefaultParameterSetName='Combined')]
     [OutputType([OutFileProcessor])]
@@ -582,6 +628,9 @@ function New-MergerOutFileProcessor {
         [OutFileProcessor]::new([BuildType]::Separated, $PropertyName, $DestDir, $Extension)
     }
 }
+
+# --- Content from New-MergerOutStringProcessor.ps1 ---
+
 function New-MergerOutStringProcessor {
     [CmdletBinding()]
     [OutputType([OutStringProcessor])]
@@ -592,6 +641,9 @@ function New-MergerOutStringProcessor {
     )
     [OutStringProcessor]::new($BuildType)
 }
+
+# --- Content from New-MergerRequest.ps1 ---
+
 function New-MergerRequest {
     [CmdletBinding(DefaultParameterSetName='Path')]
     [OutputType([MergerRequest])]
@@ -627,7 +679,7 @@ function New-MergerRequest {
             # Strange behavior with this:
             # $TemplateContent = Get-Content -Path $TemplatePath -Raw -Force
 
-            [System.Text.StringBuilder]$Sb = [System.Text.StringBuilder]::new()
+            [StringBuilder]$Sb = [StringBuilder]::new()
             [boolean]$FirstLine = $true
             Get-Content -Path $TemplatePath -Force | ForEach-Object {
                 if(-not $FirstLine) {
@@ -650,3 +702,7 @@ function New-MergerRequest {
         $Request
     }
 }
+
+# --- Content from PostContent.ps1 ---
+
+
