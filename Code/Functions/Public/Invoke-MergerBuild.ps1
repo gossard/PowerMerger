@@ -1,4 +1,4 @@
-function New-MergerBuild {
+function Invoke-MergerBuild {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$true)]

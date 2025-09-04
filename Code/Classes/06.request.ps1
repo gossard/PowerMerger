@@ -2,9 +2,9 @@ class MergerRequest {
 
     [string]$TemplatePath
     [string]$TemplateContent
-    [FieldFormat]$FieldFormat
+    [string]$FieldWrapper
     [string]$DynamicContentField
-    [hashtable]$StaticFields
+    [object]$StaticData
     [int]$ProgressGranularity
     [List[object]]$Objects
 
@@ -13,17 +13,14 @@ class MergerRequest {
         [string]$TemplateContent,
         [string]$FieldWrapper,
         [string]$DynamicContentField,
-        [hashtable]$StaticFields,
+        [object]$StaticData,
         [int]$ProgressGranularity) {
 
         $this.TemplatePath = $TemplatePath
         $this.TemplateContent = $TemplateContent
-        $this.FieldFormat = [FieldFormat]::new($FieldWrapper)
-        $this.DynamicContentField = $this.FieldFormat.Format($DynamicContentField)
-        $this.StaticFields = @{}
-        foreach($Key in $StaticFields.Keys) {
-            $this.StaticFields[$this.FieldFormat.Format($Key)] = $StaticFields[$Key]
-        }
+        $this.FieldWrapper = $FieldWrapper
+        $this.DynamicContentField = $DynamicContentField
+        $this.StaticData = $StaticData
         $this.ProgressGranularity = $ProgressGranularity
         $this.Objects = [List[object]]::new()
     }

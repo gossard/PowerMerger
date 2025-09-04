@@ -1,3 +1,12 @@
+> ### V2 Documentation Update in Progress
+> 
+> Please note: The documentation below is for **V1**. The code on the `main` branch is now **V2** and includes breaking changes.
+> 
+> **Key breaking changes:**
+> - `New-MergerBuild` is now `Invoke-MergerBuild`
+> - The `-StaticFields` parameter is now `-StaticData`
+---
+
 # PowerMerger
 
 PowerMerger is a PowerShell tool for generating text from templates and data. It was born from a personal need for a straightforward automation tool and is shared in the hope that it might be useful to others.

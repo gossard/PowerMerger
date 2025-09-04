@@ -3,7 +3,7 @@
 #
 # Généré par : Florent Gossard
 #
-# Généré le : 28/08/2025
+# Généré le : 04/09/2025
 #
 
 @{
@@ -12,7 +12,7 @@
 RootModule = 'PowerMerger'
 
 # Numéro de version de ce module.
-ModuleVersion = '1.0.1'
+ModuleVersion = '2.0.0'
 
 # Éditions PS prises en charge
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Copyright = '(c) 2023 administrateur. Tous droits rï¿½servï¿½s.'
 # NestedModules = @()
 
 # Fonctions à exporter à partir de ce module. Pour de meilleures performances, n’utilisez pas de caractères génériques et ne supprimez pas l’entrée. Utilisez un tableau vide si vous n’avez aucune fonction à exporter.
-FunctionsToExport = 'New-MergerBuild', 'New-MergerEmptyProcessor', 
+FunctionsToExport = 'Invoke-MergerBuild', 'New-MergerEmptyProcessor', 
                'New-MergerOutFileProcessor', 'New-MergerOutStringProcessor', 
                'New-MergerRequest'
 

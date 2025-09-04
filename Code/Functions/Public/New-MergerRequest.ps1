@@ -19,7 +19,7 @@ function New-MergerRequest {
         [string]$DynamicContentField = 'Dynamic',
 
         [Parameter(Mandatory=$false)]
-        [hashtable]$StaticFields,
+        [object]$StaticData,
 
         [Parameter(Mandatory=$false)]
         [ValidateRange(0, 100)]
@@ -34,7 +34,7 @@ function New-MergerRequest {
             # $TemplateContent = Get-Content -Path $TemplatePath -Raw -Force
 
             [StringBuilder]$Sb = [StringBuilder]::new()
-            [boolean]$FirstLine = $true
+            [bool]$FirstLine = $true
             Get-Content -Path $TemplatePath -Force | ForEach-Object {
                 if(-not $FirstLine) {
                     $Sb.AppendLine([string]::Empty) > $null
@@ -45,7 +45,7 @@ function New-MergerRequest {
             $TemplateContent = $Sb.ToString()
         }
         [MergerRequest]$Request = [MergerRequest]::new(
-            $TemplatePath, $TemplateContent, $FieldWrapper, $DynamicContentField, $StaticFields, $ProgressGranularity)
+            $TemplatePath, $TemplateContent, $FieldWrapper, $DynamicContentField, $StaticData, $ProgressGranularity)
     }
     process{
         foreach($Obj in $Object) {

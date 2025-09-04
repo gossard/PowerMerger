@@ -33,12 +33,6 @@ class ContentBuffer {
         $this.Buffer.Replace($Field, $Value)
     }
 
-    [void]ReplaceFields([hashtable]$Fields) {
-        foreach($Key in $Fields.Keys) {
-            $this.ReplaceField($Key, $Fields[$Key])
-        }
-    }
-
 }
 
 <# abstract #> class MergerContent {
@@ -46,15 +40,17 @@ class ContentBuffer {
     [ContentBuffer]$Tmp
     [ContentBuffer]$Content
     [string]$Template
+    [List[Field]]$Fields
 
     MergerContent() {
         $this.Tmp = [ContentBuffer]::new()
         $this.Content = [ContentBuffer]::new()
         $this.Template = [string]::Empty
+        $this.Fields = [List[Field]]::new()
     }
 
     <# abstract #> [bool]IsDynamic() {
-        throw [NotImplementedException]
+        throw [NotImplementedException]::new()
     }
 
 }
@@ -71,12 +67,10 @@ class MasterContent : MergerContent {
 
 class DynamicContent : MergerContent {
 
-    [string]$PlaceholderField
-    [HashSet[string]]$Fields
+    [Field]$PlaceholderField
 
-    DynamicContent([string]$PlaceholderField) : base() {
+    DynamicContent([Field]$PlaceholderField) : base() {
         $this.PlaceholderField = $PlaceholderField
-        $this.Fields = [HashSet[string]]::new()
     }
 
     [bool]IsDynamic() {
@@ -87,47 +81,59 @@ class DynamicContent : MergerContent {
 
 class MergerBuilder {
 
-    [MasterContent]$MasterContent
-    [List[DynamicContent]]$DynamicContents
     [MergerRequest]$Request
     [MergerProcessor]$Processor
+
+    [MasterContent]$MasterContent
+    [List[DynamicContent]]$DynamicContents
     [List[BuildListener]]$Listeners
     [BuildEvent]$BuildEvent
+    [FieldSyntax]$FieldSyntax
+    [FieldFormatter]$FieldFormatter
+    [FieldParser]$FieldParser
+    [FieldFactory]$FieldFactory
     [FieldResolver]$FieldResolver
 
-    [System.Collections.Generic.List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
-        $this.MasterContent = [MasterContent]::new()
-        $this.DynamicContents = [List[DynamicContent]]::new()
+    [List[object]]Build([MergerRequest]$Request, [MergerProcessor]$Processor) {
         $this.Request = $Request
         $this.Processor = $Processor
+
+        $this.MasterContent = [MasterContent]::new()
+        $this.DynamicContents = [List[DynamicContent]]::new()
         $this.Listeners = [List[BuildListener]]::new()
-        $this.Listeners.Add($Processor)
-        if($Request.ProgressGranularity -gt 0) {
+        $this.Listeners.Add($this.Processor)
+        if($this.Request.ProgressGranularity -gt 0) {
             $this.Listeners.Add([BuildProgress]::new())
         }
         $this.BuildEvent = [BuildEvent]::new()
-        $this.FieldResolver = [FieldResolver]::new($Request.FieldFormat)
+        $this.FieldSyntax = [FieldSyntax]::new($this.Request.FieldWrapper)
+        $this.FieldFormatter = [FieldFormatter]::new($this.FieldSyntax)
+        $this.FieldParser = [FieldParser]::new($this.FieldSyntax)
+        $this.FieldFactory = [FieldFactory]::new($this.FieldFormatter)
+        $this.FieldResolver = [FieldResolver]::new()
 
-        $this.BuildInternal()
+        $this._buildInternal()
         return $this.Processor.Output
     }
 
-    hidden [void]BuildInternal() {
-        $this.NotifyAll($this.BuildEvent.BuildBegin($this.Request))
+    hidden [void]_buildInternal() {
+        [Field]$DynamicContentField = $this.FieldFactory.CreateFromSelector($this.Request.DynamicContentField)
+
+        $this._notifyAll($this.BuildEvent.BuildBegin($this.Request))
         # ========================
         # Extract Dynamic Sections
         # ========================
         [bool]$NewLine = $false # Content begin (Master)
         [MergerContent]$CurrentContent = $this.MasterContent
         foreach($Line in ($this.Request.TemplateContent -split '\r?\n')) {
-            if($Line -match $this.Request.DynamicContentField) {
+            if($Line -match $DynamicContentField.RawText) {
                 if($CurrentContent.IsDynamic()) {
                     $CurrentContent = $this.MasterContent
                     $NewLine = $true
                 } else {
-                    [DynamicContent]$NewContent = $this.NewDynamicContent()
+                    [DynamicContent]$NewContent = $this._newDynamicContent()
                     $this.MasterContent.Tmp.NewLine()
-                    $this.MasterContent.Tmp.Append($NewContent.PlaceholderField)
+                    $this.MasterContent.Tmp.Append($NewContent.PlaceholderField.RawText)
                     $CurrentContent = $NewContent
                     $NewLine = $false # Content begin (Dynamic)
                 }
@@ -140,14 +146,25 @@ class MergerBuilder {
             }
         }
         if($CurrentContent.IsDynamic()) {
-            throw ("The dynamic section is not closed (a '{0}' field is missing)." -f $this.Request.DynamicContentField)
+            throw "The dynamic section is not closed (a '{0}' field is missing)." -f $DynamicContentField.RawText
         }
-        # =====================
-        # Replace Static Fields
-        # =====================
-        $this.MasterContent.Tmp.ReplaceFields($this.Request.StaticFields)
+        # ===========
+        # Find Fields
+        # ===========
         foreach($Dynamic in $this.DynamicContents) {
-            $Dynamic.Tmp.ReplaceFields($this.Request.StaticFields)
+            $Dynamic.Fields = $this.FieldParser.ParseAll($Dynamic.Tmp)
+        }
+        $this.MasterContent.Fields = $this.FieldParser.ParseAll($this.MasterContent.Tmp)
+        [string[]]$DynamicPlaceholders = $this.DynamicContents.PlaceholderField.RawText
+        $this.MasterContent.Fields.RemoveAll({
+            param($Element)
+            $DynamicPlaceholders -contains $Element.RawText
+        })
+        # ======================================
+        # Resolve static fields in MasterContent
+        # ======================================
+        foreach($Field in $this.MasterContent.Fields) {
+            $this.MasterContent.Tmp.ReplaceField($Field.RawText, $this.FieldResolver.Resolve($Field, $this.Request.StaticData))
         }
         # ==============
         # Init Templates
@@ -156,29 +173,20 @@ class MergerBuilder {
         foreach($Dynamic in $this.DynamicContents) {
             $Dynamic.Template = $Dynamic.Tmp.ToString()
         }
-        # ===================
-        # Find Dynamic Fields
-        # ===================
-        foreach($Dynamic in $this.DynamicContents) {
-            $MatchInfos = Select-String -InputObject $Dynamic.Template -Pattern $this.Request.FieldFormat.Pattern -AllMatches
-            foreach($Match in $MatchInfos.Matches) {
-                $Dynamic.Fields.Add($Match.Value)
-            }
-        }
         # =============
         # Merge Objects
         # =============
         [bool]$FirstObject = $true
         foreach($Object in $this.Request.Objects) {
 
-            $this.NotifyAll($this.BuildEvent.MergingObject($Object))
+            $this._notifyAll($this.BuildEvent.MergingObject($Object))
 
             foreach($Dynamic in $this.DynamicContents) {
 
                 $Dynamic.Tmp.Set($Dynamic.Template)
 
                 foreach($Field in $Dynamic.Fields) {
-                    $Dynamic.Tmp.ReplaceField($Field, $this.FieldResolver.Resolve($Object, $Field))
+                    $Dynamic.Tmp.ReplaceField($Field.RawText, $this.FieldResolver.Resolve($Field, $Object, $this.Request.StaticData))
                 }
                 switch ($this.Processor.GetRequiredBuildType()) {
                     ([BuildType]::Separated) {
@@ -195,32 +203,32 @@ class MergerBuilder {
             $FirstObject = $false
 
             if ($this.Processor.GetRequiredBuildType() -eq [BuildType]::Separated) {
-                $this.GenerateContentAndNotify($Object)
+                $this._generateContentAndNotify($Object)
             }
         }
         if ($this.Processor.GetRequiredBuildType() -eq [BuildType]::Combined) {
-            $this.GenerateContentAndNotify($null)
+            $this._generateContentAndNotify($null)
         }
         #===========================================
-        $this.NotifyAll($this.BuildEvent.BuildEnd())
+        $this._notifyAll($this.BuildEvent.BuildEnd())
     }
 
-    hidden [DynamicContent]NewDynamicContent() {
-        [string]$PlaceholderField = $this.Request.FieldFormat.Format("Dynamic$($this.DynamicContents.Count)")
-        [DynamicContent]$Content = [DynamicContent]::new($PlaceholderField)
+    hidden [DynamicContent]_newDynamicContent() {
+        [string]$Selector = "Dynamic$($this.DynamicContents.Count)"
+        [DynamicContent]$Content = [DynamicContent]::new($this.FieldFactory.CreateFromSelector($Selector))
         $this.DynamicContents.Add($Content)
         return $Content
     }
 
-    hidden [void]GenerateContentAndNotify($Object) {
+    hidden [void]_generateContentAndNotify($Object) {
         $this.MasterContent.Content.Set($this.MasterContent.Template)
         foreach($Dynamic in $this.DynamicContents) {
-            $this.MasterContent.Content.ReplaceField($Dynamic.PlaceholderField, $Dynamic.Content.ToString())
+            $this.MasterContent.Content.ReplaceField($Dynamic.PlaceholderField.RawText, $Dynamic.Content.ToString())
         }
-        $this.NotifyAll($this.BuildEvent.ContentGenerated($Object, $this.MasterContent.Content.ToString()))
+        $this._notifyAll($this.BuildEvent.ContentGenerated($Object, $this.MasterContent.Content.ToString()))
     }
 
-    hidden [void]NotifyAll([BuildEvent]$BuildEvent) {
+    hidden [void]_notifyAll([BuildEvent]$BuildEvent) {
         foreach($Listener in $this.Listeners) {
             $Listener.BuildStateChanged($BuildEvent)
         }
